@@ -110,10 +110,11 @@ o logs will be saved` / `Logs are saved to <absolute path>`
 - Chat word filtering ported from `BasisWordFilter` (homoglyph table, 4,948 trigrams, default
   53-word list); active when `HasFileSupport` is enabled, as in the C# server. A custom
   `config/chat_word_filter.txt` or `Configuration/chat_word_filter.txt` is loaded when present.
-- CPU/POP/BSR detail values: the Rust server emits the same record shapes from its own
-  single-threaded reduction model, and the differential projection normalizes the details.
-- The C# reduction system's periodic cadence: `[CPU/POP]` is emitted every 30 s from
-  the Rust server, and the idle `[BSR] Load` lines when the last authenticated peer leaves.
+- Rust-native telemetry. Startup records the measured CPU features and core count, process RSS,
+  available memory, the peer-state/receive-buffer footprint, and the configured reduction/bundle
+  policy. Every 30 s the server reports measured loop rate and busy/wait time, packet and byte
+  rates, live queue depths, reliable resends and drops, bundle totals, process CPU and RSS. The
+  C# `[CPU/POP]` worker/tier strings are not reproduced; this server has no GC and no worker pools.
 - The full `basisctl` command set (status, players, help, shutdown, and `attach` log streaming are implemented) and
   attached-console log streaming.
 - The full LiteNetLib retransmission window and backoff. A basic 100 ms / five-attempt
@@ -134,7 +135,7 @@ basis-crypto/            protocol-56 X25519, HKDF, login transcript and packet A
     basis-health/            HTTP health endpoint and shared counters
     basis-control/           C# basisctl Unix-domain control socket
     basis-p2p/               P2P signalling relay and offloaded-pair state
-    basis-telemetry/         C#-shaped CPU/POP/BSR startup diagnostics
+    basis-telemetry/         Rust-native runtime telemetry
     basis-permissions/       permissions.xml admin seeding
     basis-setup/             first-boot interactive setup wizard
     basis-transport/         LiteNetLib-compatible UDP transport and server state
@@ -251,11 +252,11 @@ powershell -ExecutionPolicy Bypass -File rust-basis-server\scripts\diff-log-comp
 
 This runs the C# server and the Rust server with the same auth settings, drives both with the
 same C# client harness, normalizes timestamps, and compares the shared event projection. Current
-result: **38 normalized records match**, covering boot, CPU/POP/BSR startup diagnostics,
-admin/auth startup, listener lines, worker boot, default-library load, connect/disconnect,
-password rejection, DID signature rejection, authentication timeout, the optional handshake
-lines, and the control-socket listener. The C# health-handle error line is outside that
-projection because the C# host cannot bind its health listener here.
+result: **38 normalized records match**, covering boot, admin/auth startup, listener lines, worker
+boot, default-library load, connect/disconnect, password rejection, DID signature rejection,
+authentication timeout, the optional handshake lines, and the control-socket listener. Telemetry
+records are Rust-native and intentionally outside the projection. The C# health-handle error line
+is also outside that projection because the C# host cannot bind its health listener here.
 
 Unit tests:
 

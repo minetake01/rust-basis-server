@@ -55,13 +55,14 @@
   200/200/150 image bandwidth).
 - Voice relay, avatar relay, scene/ownership/resource caches, default library, initial world.
 - Distance reduction VeryLow/Low/Medium with C# repacker oracle test.
-- C#-shaped startup/connect/disconnect/rejection/bind-failure logs, including the
-  `Unknown EventsChannel event type` line for unrouted event types.
+- C#-shaped event logs (startup/connect/disconnect/rejection/bind-failure), including the
+  `Unknown EventsChannel event type` line for unrouted event types. Periodic telemetry is
+  Rust-native and intentionally outside the C# projection.
 
 ## Test results
 
 ```text
-cargo test: 92 passed
+cargo test: 100 passed
 clippy: clean
 run-compat: all PASS
 check-log-compat: PASS
@@ -104,7 +105,7 @@ All Unity checks were driven through Unity MCP without window activation or mous
 run-compat:        8 PASS
 check-log-compat:  3 PASS
 diff-log-compat:   30 normalized shared records match
-cargo test:        92 passed
+cargo test:        100 passed
 release build:     success
 headless-56:       PASS
 ```

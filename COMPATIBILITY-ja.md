@@ -72,7 +72,7 @@ powershell -ExecutionPolicy Bypass -File rust-basis-server\scripts\diff-log-comp
 ハーネスで接続・切断・不正パスワードを実行し、タイムスタンプを正規化して共通イベント列を
 比較します。現状は **38 レコード一致**です。
 
-`cargo test` は 92 件成功。実 Unity クライアントでサーバー配信 world の `Scene Load From Server Complete` を確認。Unity MCP 経由で Unity プロジェクトの正式ブートシーンを接続し、`test` world のロード、`Players=2` / `RemotePlayers=1` / `PlayerReady=True`、リモート位置の追従（Unity `(0.81, 5.49, -17.11)`、サーバー `(-0.101, 5.0800004, -18.227001)`）、エディタ発チャットの 56 コンソール到達、コンソール停止時の `Peer removed: 1` / `Player 1 removed and cleaned up.` と Unity の `RemotePlayers=0`、コンソール発チャットの Unity 受信 `[CHAT-IN] 2:headless-chat-0-21035`、ボイス受信キュー `BasisNetworkHandleVoice.Message.Count=1` を確認。`scripts/run-compat.ps1`（health version 56）、`scripts/check-log-compat.ps1`、`scripts/run-headless-56.ps1` は成功。特に `repack::tests::matches_the_csharp_repacker_oracle` は、
+`cargo test` は 100 件成功。実 Unity クライアントでサーバー配信 world の `Scene Load From Server Complete` を確認。Unity MCP 経由で Unity プロジェクトの正式ブートシーンを接続し、`test` world のロード、`Players=2` / `RemotePlayers=1` / `PlayerReady=True`、リモート位置の追従（Unity `(0.81, 5.49, -17.11)`、サーバー `(-0.101, 5.0800004, -18.227001)`）、エディタ発チャットの 56 コンソール到達、コンソール停止時の `Peer removed: 1` / `Player 1 removed and cleaned up.` と Unity の `RemotePlayers=0`、コンソール発チャットの Unity 受信 `[CHAT-IN] 2:headless-chat-0-21035`、ボイス受信キュー `BasisNetworkHandleVoice.Message.Count=1` を確認。`scripts/run-compat.ps1`（health version 56）、`scripts/check-log-compat.ps1`、`scripts/run-headless-56.ps1` は成功。特に `repack::tests::matches_the_csharp_repacker_oracle` は、
 C# の `AvatarQualityRepacker` が同じ High 入力から生成した Medium/Low/VeryLow の
 バイト列と Rust の出力が完全一致することを確認しています。
 
@@ -136,8 +136,9 @@ Invoke-RestMethod http://127.0.0.1:10666/health
 - Reliable の完全な再送ウィンドウ／バックオフ。100 ms・最大 5 回の基本再送は実装済みだが、
   LiteNetLib の完全なウィンドウ制御と輻輳制御は未実装
 - 低品質ピアはキーフレームのみ受信するため、アバター更新はキーフレーム周期
-- CPU/POP/BSR の詳細値は Rust 側の単一スレッド削減モデルに基づくため C# と異なる（差分では詳細を正規化）
-- C# の周期的な `[CPU/POP]` 更新は 30 秒間隔で実装（`[BSR] Load legend` / `[BSR] Load` はアイドル時に出力）
+- テレメトリは Rust 実装自身の実測値。起動時は CPU 機能・コア数・RSS・空きメモリ・Peer の固定サイズ・
+  削減／バンドル設定、30 秒ごとはループ周期と busy/待機時間、pkt/s、RSS、CPU、キューの深さ、
+  reliable resend、bundle 数。C# の `[CPU/POP]` / `[BSR] Load` の数値文字列は再現しない
 - ログ形式・主要イベントは一致するが、未実装サブシステムのログは完全一致しない
 
 ## ファイル
