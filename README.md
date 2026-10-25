@@ -267,6 +267,13 @@ Unit tests:
 cargo test --manifest-path rust-basis-server\Cargo.toml
 ```
 
+`.github/workflows/ci.yml` runs formatting, Clippy, unit/doc tests and the release build, and on
+Linux, Windows and macOS runs `bin/basis-server/tests/compat_e2e.rs`. That suite starts the real
+binary and checks the C# contract end to end: `config.xml` schema v15 and the older-schema upgrade,
+admin seeding, the log shape, health/REST statuses and fields, the server-info UDP query, and the
+structured reject packets. The full C# harness still needs the Unity workspace, so
+`scripts/run-compat.ps1` runs on a Windows machine rather than a hosted runner.
+
 ## Safety and unsafe policy
 
 `crates/basis-wire/src/fast.rs` contains the hot-path `unsafe` readers; each has a `# Safety`

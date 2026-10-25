@@ -62,7 +62,7 @@
 ## Test results
 
 ```text
-cargo test: 102 passed
+cargo test: 114 passed (includes the 12-test compatibility suite in bin/basis-server/tests)
 clippy: clean
 run-compat: all PASS
 check-log-compat: PASS
@@ -105,7 +105,7 @@ All Unity checks were driven through Unity MCP without window activation or mous
 run-compat:        8 PASS
 check-log-compat:  3 PASS
 diff-log-compat:   30 normalized shared records match
-cargo test:        102 passed
+cargo test:        114 passed
 release build:     success
 headless-56:       PASS
 ```

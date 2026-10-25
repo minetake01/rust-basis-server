@@ -73,7 +73,17 @@ powershell -ExecutionPolicy Bypass -File rust-basis-server\scripts\diff-log-comp
 ハーネスで接続・切断・不正パスワードを実行し、タイムスタンプを正規化して共通イベント列を
 比較します。現状は **38 レコード一致**です。
 
-`cargo test` は 102 件成功。実 Unity クライアントでサーバー配信 world の `Scene Load From Server Complete` を確認。Unity MCP 経由で Unity プロジェクトの正式ブートシーンを接続し、`test` world のロード、`Players=2` / `RemotePlayers=1` / `PlayerReady=True`、リモート位置の追従（Unity `(0.81, 5.49, -17.11)`、サーバー `(-0.101, 5.0800004, -18.227001)`）、エディタ発チャットの 56 コンソール到達、コンソール停止時の `Peer removed: 1` / `Player 1 removed and cleaned up.` と Unity の `RemotePlayers=0`、コンソール発チャットの Unity 受信 `[CHAT-IN] 2:headless-chat-0-21035`、ボイス受信キュー `BasisNetworkHandleVoice.Message.Count=1` を確認。`scripts/run-compat.ps1`（health version 56）、`scripts/check-log-compat.ps1`、`scripts/run-headless-56.ps1` は成功。特に `repack::tests::matches_the_csharp_repacker_oracle` は、
+`.github/workflows/ci.yml` は Linux / Windows / macOS で書式・Clippy・単体テスト・Doc テスト・
+リリースビルドに加え、`bin/basis-server/tests/compat_e2e.rs` の互換性 E2E を実行します。
+この E2E は実 `basis-server-rs` を起動し、`config.xml` schema v15 の初回生成と旧 schema の
+アップグレード、`permissions.xml` の管理者シード、C# 形式のログと `Logs/yyyy-MM-dd.log`、
+health / REST のステータス・ヘッダー・フィールド、未接続サーバー情報 UDP クエリ、
+サーバー満員（kind 2）と `Invalid client data.` の reject パケットを検証します。
+C# ハーネス（`scripts/run-compat.ps1`）は Unity ワークスペースの `BasisNetworkClient` /
+`BasisNetworkServer` を参照するためホストランナーではビルドできず、Windows 上の
+ローカル実行（またはそのワークスペースを持つ self-hosted ランナー）のままです。
+
+`cargo test` は 114 件成功（うち CI 実行の互換性 E2E 12 件）。実 Unity クライアントでサーバー配信 world の `Scene Load From Server Complete` を確認。Unity MCP 経由で Unity プロジェクトの正式ブートシーンを接続し、`test` world のロード、`Players=2` / `RemotePlayers=1` / `PlayerReady=True`、リモート位置の追従（Unity `(0.81, 5.49, -17.11)`、サーバー `(-0.101, 5.0800004, -18.227001)`）、エディタ発チャットの 56 コンソール到達、コンソール停止時の `Peer removed: 1` / `Player 1 removed and cleaned up.` と Unity の `RemotePlayers=0`、コンソール発チャットの Unity 受信 `[CHAT-IN] 2:headless-chat-0-21035`、ボイス受信キュー `BasisNetworkHandleVoice.Message.Count=1` を確認。`scripts/run-compat.ps1`（health version 56）、`scripts/check-log-compat.ps1`、`scripts/run-headless-56.ps1` は成功。特に `repack::tests::matches_the_csharp_repacker_oracle` は、
 C# の `AvatarQualityRepacker` が同じ High 入力から生成した Medium/Low/VeryLow の
 バイト列と Rust の出力が完全一致することを確認しています。
 

@@ -12,10 +12,15 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  check:
-    name: Format, lint, test, and build
+  lint:
+    name: Format and lint
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,10 +37,72 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
-      - name: Run tests
-        run: cargo test --workspace
+  test:
+    name: Unit tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run unit tests
+        run: cargo test --workspace --lib --bins --locked
+
+      - name: Run doc tests
+        run: cargo test --workspace --doc --locked
+
+  compatibility:
+    name: Compatibility (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      # Starts the real basis-server-rs and checks the C# compatibility contract end to end:
+      # config.xml schema v15 / upgrade, permissions seeding, log shape, health and REST statuses,
+      # the unconnected server-info UDP query, and the structured reject payloads.
+      # The full C# harness lives in the Unity workspace (it references BasisNetworkClient and
+      # BasisNetworkServer), so it cannot be built here; scripts/run-compat.ps1 remains the
+      # local/self-hosted check for that side.
+      - name: Run compatibility suite
+        run: cargo test -p basis-server --test compat_e2e --locked -- --test-threads=1
+
+  build:
+    name: Release build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
 
       - name: Build release
-        run: cargo build --workspace --release
+        run: cargo build --workspace --release --locked
