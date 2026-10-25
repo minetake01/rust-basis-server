@@ -39,6 +39,7 @@ const PROP_PEER_NOT_FOUND: u8 = 14;
 const PROTOCOL_ID: i32 = 14;
 const MAX_SEQUENCE: u16 = 32768;
 const DEFAULT_MTU: usize = 1024;
+const RX_BUFFER_BYTES: usize = 65535;
 const CHANNELED_HEADER: usize = 4;
 const FRAGMENT_HEADER: usize = 6;
 
@@ -556,6 +557,7 @@ pub struct Server {
     peers: HashMap<SocketAddr, Peer>,
     next_peer_id: u16,
     stats: Arc<HealthStats>,
+    telemetry: basis_telemetry::Telemetry,
     visitors: Arc<AtomicUsize>,
     info_last_seen: HashMap<IpAddr, Instant>,
     info_tokens: f64,
@@ -579,7 +581,6 @@ pub struct Server {
     resources: HashMap<String, Vec<u8>>,
     preload_sessions: HashMap<String, PreloadSession>,
     next_net_id: u16,
-    reduction_idle_logged: bool,
     network_id_counter: i32,
 }
 
@@ -608,8 +609,8 @@ impl Server {
             Arc::clone(&health_worlds),
             Arc::clone(&world_commands),
         );
-        basis_telemetry::log_startup(&config);
-        basis_telemetry::start_periodic(Arc::clone(&visitors));
+        let mut telemetry = basis_telemetry::Telemetry::new();
+        telemetry.log_startup(&config, std::mem::size_of::<Peer>(), RX_BUFFER_BYTES);
         let admins = load_admins(&config);
         let admin_list: Vec<&str> = admins.iter().map(String::as_str).collect();
         info!("Loaded Admins {} {}", admins.len(), admin_list.join(", "));
@@ -701,6 +702,7 @@ impl Server {
             peers: HashMap::new(),
             next_peer_id: 0,
             stats,
+            telemetry,
             visitors,
             info_last_seen: HashMap::new(),
             info_tokens: 200.0,
@@ -724,7 +726,6 @@ impl Server {
             resources: HashMap::new(),
             preload_sessions: HashMap::new(),
             next_net_id: 1,
-            reduction_idle_logged: false,
             network_id_counter: -1,
         };
         if !server.config.initial_world_url.is_empty() {
@@ -843,8 +844,9 @@ impl Server {
     }
 
     pub fn run(&mut self) -> io::Result<()> {
-        let mut buf = vec![0u8; 65535];
+        let mut buf = vec![0u8; RX_BUFFER_BYTES];
         loop {
+            let iteration = Instant::now();
             if self
                 ._control
                 .as_ref()
@@ -860,16 +862,18 @@ impl Server {
             self.flush_world_commands();
             self.flush_pending_world_unload();
             self.reap_preload_sessions();
-            match self.socket.recv_from(&mut buf) {
+            let before_receive = Instant::now();
+            let received = self.socket.recv_from(&mut buf);
+            let after_receive = Instant::now();
+            match received {
                 Ok((len, addr)) => {
                     self.stats.rx_packets.fetch_add(1, Ordering::Relaxed);
                     self.stats.rx_bytes.fetch_add(len as u64, Ordering::Relaxed);
                     let mut datagram = buf[..len].to_vec();
-                    if !self.open_inbound(addr, &mut datagram) {
-                        continue;
-                    }
-                    if let Err(e) = self.handle_datagram(&datagram, addr) {
-                        debug!("packet from {addr} rejected: {e}");
+                    if self.open_inbound(addr, &mut datagram) {
+                        if let Err(e) = self.handle_datagram(&datagram, addr) {
+                            debug!("packet from {addr} rejected: {e}");
+                        }
                     }
                 }
                 Err(e)
@@ -884,7 +888,42 @@ impl Server {
                 }
                 Err(e) => return Err(e),
             }
+            let finished = Instant::now();
+            self.telemetry.record_iteration(
+                (before_receive - iteration) + (finished - after_receive),
+                after_receive - before_receive,
+            );
+            if self.telemetry.due() {
+                self.report_telemetry();
+            }
         }
+    }
+
+    fn report_telemetry(&mut self) {
+        let online = self
+            .peers
+            .values()
+            .filter(|peer| peer.authenticated)
+            .count();
+        let reliable_queue = self.peers.values().map(|peer| peer.reliable.len()).sum();
+        let mut bundle_messages = 0;
+        let mut bundle_bytes = 0;
+        for target in self.bundle_queue.targets() {
+            bundle_messages += self.bundle_queue.len(target);
+            bundle_bytes += self.bundle_queue.bytes(target);
+        }
+        self.telemetry.report(basis_telemetry::Counters {
+            online,
+            peer_limit: self.config.peer_limit,
+            pending_auth: self.pending_auth.len(),
+            reliable_queue,
+            bundle_messages,
+            bundle_bytes,
+            rx_packets: self.stats.rx_packets.load(Ordering::Relaxed),
+            tx_packets: self.stats.tx_packets.load(Ordering::Relaxed),
+            rx_bytes: self.stats.rx_bytes.load(Ordering::Relaxed),
+            tx_bytes: self.stats.tx_bytes.load(Ordering::Relaxed),
+        });
     }
 
     fn now_ticks() -> i64 {
@@ -962,10 +1001,6 @@ impl Server {
                         self.broadcast_departure(peer.id);
                         self.reset_network_id_if_empty();
                         info!("Player {} removed and cleaned up.", peer.id);
-                        if self.peers.is_empty() && !self.reduction_idle_logged {
-                            self.reduction_idle_logged = true;
-                            basis_telemetry::log_reduction_idle();
-                        }
                     } else {
                         info!(
                             "Peer {} was not in AuthenticatedPeers (likely rejected before auth completed).",
@@ -1796,18 +1831,44 @@ impl Server {
             return;
         }
         self.bundle_last_flush = Instant::now();
+        let mut bundles = 0u64;
+        let mut bundled_messages = 0u64;
+        let mut raw_bytes = 0u64;
+        let mut wire_bytes = 0u64;
+        let mut direct_sends = 0u64;
         for target in self.bundle_queue.targets() {
             let count = self.bundle_queue.len(target);
             let bytes = self.bundle_queue.bytes(target);
             if count < self.bundle_min_messages as usize && bytes < self.bundle_min_bytes as usize {
+                direct_sends = direct_sends.saturating_add(count as u64);
                 for (channel, payload) in self.bundle_queue.take_entries(target) {
-                    let _ = self.send_unreliable(target, channel, &payload);
+                    if self.send_unreliable(target, channel, &payload).is_err() {
+                        self.telemetry.record_send_failure();
+                    }
                 }
             } else {
+                bundled_messages = bundled_messages.saturating_add(count as u64);
+                raw_bytes = raw_bytes.saturating_add(bytes as u64);
                 for bundle in self.bundle_queue.take_chunks(target, 60_000) {
-                    let _ = self.send_unreliable(target, COMPRESSED_AVATAR_BUNDLE_CHANNEL, &bundle);
+                    bundles = bundles.saturating_add(1);
+                    wire_bytes = wire_bytes.saturating_add(bundle.len() as u64);
+                    if self
+                        .send_unreliable(target, COMPRESSED_AVATAR_BUNDLE_CHANNEL, &bundle)
+                        .is_err()
+                    {
+                        self.telemetry.record_send_failure();
+                    }
                 }
             }
+        }
+        if bundles + direct_sends > 0 {
+            self.telemetry.record_bundles(
+                bundles,
+                bundled_messages,
+                raw_bytes,
+                wire_bytes,
+                direct_sends,
+            );
         }
     }
 
@@ -1907,7 +1968,6 @@ impl Server {
             error!("Rejected after accept with reason: was unable to authenticate!");
             return Ok(());
         }
-        self.reduction_idle_logged = false;
         self.complete_auth(addr)
     }
 
@@ -4742,6 +4802,8 @@ impl Server {
     fn sweep_reliable(&mut self) {
         let now = Instant::now();
         let mut resends = Vec::new();
+        let mut resend_count = 0u64;
+        let mut exhausted = 0u64;
         for peer in self.peers.values_mut() {
             let addr = peer.endpoint;
             peer.reliable.retain_mut(|pending| {
@@ -4749,16 +4811,23 @@ impl Server {
                     return true;
                 }
                 if pending.attempts >= 5 {
+                    exhausted = exhausted.saturating_add(1);
                     return false;
                 }
                 pending.attempts += 1;
                 pending.sent = now;
+                resend_count = resend_count.saturating_add(1);
                 resends.push((pending.packet.clone(), addr));
                 true
             });
         }
         for (packet, addr) in resends {
-            let _ = self.send_raw(&packet, addr);
+            if self.send_raw(&packet, addr).is_err() {
+                self.telemetry.record_send_failure();
+            }
+        }
+        if resend_count + exhausted > 0 {
+            self.telemetry.record_reliable(resend_count, exhausted);
         }
     }
 

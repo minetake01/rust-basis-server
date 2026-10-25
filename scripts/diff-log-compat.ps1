@@ -109,7 +109,6 @@ function Normalize([string]$path) {
         $line = $line -replace 'Peer [0-9]+', 'Peer <ID>'
         $line = $line -replace 'Player [0-9]+', 'Player <ID>'
         $line = $line -replace '\[basisctl\] Control socket listening at .+$', '[basisctl] Control socket listening at <SOCKET>'
-        $line = $line -replace '\[(CPU|POP|BSR|CPU/POP)\] .+$', '[$1] <DETAIL>'
         $line
     }
 }
