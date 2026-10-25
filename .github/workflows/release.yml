@@ -12,14 +12,19 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     name: Build ${{ matrix.target }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -86,6 +91,9 @@ jobs:
     name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
@@ -94,7 +102,7 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Create release
+      - name: Create or update release
         env:
           GH_TOKEN: ${{ github.token }}
           INPUT_TAG: ${{ inputs.tag }}
@@ -108,7 +116,18 @@ jobs:
           else
             TAG="$REF_NAME"
           fi
-          gh release create "$TAG" dist/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Basis Server Rust $TAG" \
-            --generate-notes
+          if [ -z "$TAG" ]; then
+            echo "::error::a tag is required"
+            exit 1
+          fi
+          # A manual dispatch is often used to replace a broken release, so make the step
+          # idempotent instead of failing on the already-existing release.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "Basis Server Rust $TAG" \
+              --generate-notes
+          fi
