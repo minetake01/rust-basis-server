@@ -1,0 +1,7 @@
+target/
+.tmp/
+
+# Runtime state written next to the working directory.
+/config/config.xml
+/Logs/
+/CrashReports/

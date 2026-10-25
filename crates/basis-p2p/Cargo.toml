@@ -1,0 +1,7 @@
+[package]
+name = "basis-p2p"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+basis-wire = { path = "../basis-wire" }

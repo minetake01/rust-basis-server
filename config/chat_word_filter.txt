@@ -1,0 +1,56 @@
+# Chat word filter - one word or phrase per line
+# Lines starting with # are comments
+# Words are case-insensitive
+fuck
+fucking
+fucker
+fucked
+motherfucker
+shit
+shitting
+bullshit
+bitch
+bitches
+ass
+asshole
+bastard
+damn
+damned
+cunt
+dick
+dickhead
+cock
+cocksucker
+pussy
+whore
+slut
+piss
+pissed
+crap
+wanker
+twat
+prick
+douche
+douchebag
+nigger
+nigga
+faggot
+fag
+retard
+retarded
+tranny
+kike
+spic
+chink
+gook
+wetback
+beaner
+coon
+dyke
+kill yourself
+kys
+neck yourself
+go die
+rape
+raping
+rapist

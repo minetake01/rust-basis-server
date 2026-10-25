@@ -1,0 +1,28 @@
+[package]
+name = "basis-transport"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+basis-wire = { path = "../basis-wire" }
+basis-protocol = { path = "../basis-protocol" }
+basis-crypto = { path = "../basis-crypto" }
+basis-avatar = { path = "../basis-avatar" }
+basis-permissions = { path = "../basis-permissions" }
+basis-config = { path = "../basis-config" }
+basis-logging = { path = "../basis-logging" }
+basis-health = { path = "../basis-health" }
+basis-control = { path = "../basis-control" }
+basis-p2p = { path = "../basis-p2p" }
+basis-telemetry = { path = "../basis-telemetry" }
+ed25519-dalek.workspace = true
+rand.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+hex.workspace = true
+
+
+
+

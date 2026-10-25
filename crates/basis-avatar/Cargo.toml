@@ -1,0 +1,11 @@
+[package]
+name = "basis-avatar"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+basis-protocol = { path = "../basis-protocol" }
+
+[dev-dependencies]
+hex.workspace = true

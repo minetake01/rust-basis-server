@@ -1,0 +1,15 @@
+[package]
+name = "basis-protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+flate2 = { workspace = true }
+basis-wire = { path = "../basis-wire" }
+basis-crypto = { path = "../basis-crypto" }
+ed25519-dalek.workspace = true
+bs58.workspace = true
+zstd-sys = "2"
+
+

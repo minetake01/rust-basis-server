@@ -1,0 +1,10 @@
+[package]
+name = "basis-control"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+basis-logging = { path = "../basis-logging" }
+
+[target.'cfg(windows)'.dependencies]
+uds_windows = { workspace = true }

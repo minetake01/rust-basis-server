@@ -1,0 +1,9 @@
+[package]
+name = "basis-setup"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+basis-config = { path = "../basis-config" }
+basis-logging = { path = "../basis-logging" }
+basis-permissions = { path = "../basis-permissions" }

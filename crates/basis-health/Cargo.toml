@@ -1,0 +1,10 @@
+[package]
+name = "basis-health"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+basis-logging = { path = "../basis-logging" }
+chrono.workspace = true
+

@@ -1,0 +1,19 @@
+[package]
+name = "basis-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "basis-server-rs"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+basis-config = { path = "../../crates/basis-config" }
+basis-permissions = { path = "../../crates/basis-permissions" }
+basis-setup = { path = "../../crates/basis-setup" }
+basis-logging = { path = "../../crates/basis-logging" }
+basis-transport = { path = "../../crates/basis-transport" }
+
+
