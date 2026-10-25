@@ -44,6 +44,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -106,4 +108,7 @@ jobs:
           else
             TAG="$REF_NAME"
           fi
-          gh release create "$TAG" dist/*             --repo "$GITHUB_REPOSITORY"             --title "Basis Server Rust $TAG"             --generate-notes
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Basis Server Rust $TAG" \
+            --generate-notes
