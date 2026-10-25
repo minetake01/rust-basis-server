@@ -40,7 +40,7 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   test:
-    name: Unit tests (${{ matrix.os }})
+    name: Tests (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -57,11 +57,8 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
 
-      - name: Run unit tests
-        run: cargo test --workspace --lib --bins --locked
-
-      - name: Run doc tests
-        run: cargo test --workspace --doc --locked
+      - name: Run tests
+        run: cargo test --workspace --locked
 
   compatibility:
     name: Compatibility (${{ matrix.os }})
