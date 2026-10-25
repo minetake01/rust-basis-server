@@ -288,9 +288,10 @@ mod tests {
 
     #[test]
     fn status_command_round_trips_on_control_socket() {
-        let path = std::env::current_dir()
-            .expect("cwd")
-            .join(format!("basis-control-test-{}.sock", std::process::id()));
+        // Unix-domain socket paths are capped by SUN_LEN (104 bytes on macOS), and a CI
+        // checkout path alone can exceed that. Keep the test socket in the platform temp
+        // directory under a short name.
+        let path = std::env::temp_dir().join(format!("bctl-{}.sock", std::process::id()));
         let _ = std::fs::remove_file(&path);
         let server = ControlServer::start(ControlConfig {
             path: path.clone(),
