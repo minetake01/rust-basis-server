@@ -7,4 +7,5 @@ license.workspace = true
 [dependencies]
 basis-logging = { path = "../basis-logging" }
 chrono.workspace = true
+sysinfo = "0.33"
 

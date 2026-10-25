@@ -4,7 +4,7 @@
 
 - Protocol 56 handshake, X25519 key, DID login transcript, HKDF, ChaCha20-Poly1305.
 - Connection, authentication, wrong-password/DID rejection, auth timeout, departure.
-- Health endpoint, `/api/players`, `/api/worlds` (GET/POST/DELETE/switch), `/api/announce`.
+- Health endpoint (Rust `process`/`memory` fields), `/api/players`, `/api/worlds` (GET/POST/DELETE/switch), `/api/announce`.
 - REST body limit (1 MB / 413), 404/405 with `Allow`, invalid JSON 400, strategy validation,
   URL/password/fragment (Base64) validation, UTF-16 message length, world delete semantics,
   switch `announceMessage`/`delay` validation, and announce target 404.
@@ -62,7 +62,7 @@
 ## Test results
 
 ```text
-cargo test: 100 passed
+cargo test: 102 passed
 clippy: clean
 run-compat: all PASS
 check-log-compat: PASS
@@ -105,7 +105,7 @@ All Unity checks were driven through Unity MCP without window activation or mous
 run-compat:        8 PASS
 check-log-compat:  3 PASS
 diff-log-compat:   30 normalized shared records match
-cargo test:        100 passed
+cargo test:        102 passed
 release build:     success
 headless-56:       PASS
 ```

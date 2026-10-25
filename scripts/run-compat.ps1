@@ -23,8 +23,11 @@ try {
     if (-not $health.listening -or $health.capacity -lt 1) {
         throw 'health endpoint did not report a listening server'
     }
-    if ($health.version -ne '56' -or -not $health.currentTime -or -not $health.startTime -or -not $health.gc) {
-        throw 'health endpoint is missing C#-shaped fields'
+    if ($health.version -ne '56' -or -not $health.currentTime -or -not $health.startTime -or -not $health.process -or -not $health.memory) {
+        throw 'health endpoint is missing required fields'
+    }
+    if ($health.process.rssBytes -lt 1) {
+        throw 'health endpoint did not report process RSS'
     }
     $players = Invoke-RestMethod -Uri 'http://127.0.0.1:10667/api/players' -TimeoutSec 3
     if ($null -eq $players.players) {

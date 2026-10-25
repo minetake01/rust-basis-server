@@ -5,6 +5,102 @@
 use chrono::{DateTime, Utc};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
+
+const PROCESS_REFRESH_INTERVAL: Duration = Duration::from_millis(200);
+
+/// Samples the process and host memory for the health response. `cpu_usage` needs two refreshes
+/// separated by at least [`PROCESS_REFRESH_INTERVAL`], so the sampler caches the last value.
+struct RuntimeSampler {
+    system: System,
+    pid: Pid,
+    cores: usize,
+    cpu_percent: f32,
+    rss_bytes: u64,
+    threads: Option<usize>,
+    last_process_refresh: Instant,
+}
+
+struct RuntimeSnapshot {
+    rss_bytes: u64,
+    cpu_percent: f32,
+    threads: Option<usize>,
+    total_bytes: u64,
+    available_bytes: u64,
+}
+
+impl RuntimeSampler {
+    fn new() -> Self {
+        let mut system = System::new();
+        let pid = Pid::from_u32(std::process::id());
+        system.refresh_memory();
+        system.refresh_processes_specifics(ProcessesToUpdate::Some(&[pid]), true, refresh_kind());
+        let (rss_bytes, threads) = {
+            let process = system.process(pid);
+            (
+                process.map(|process| process.memory()).unwrap_or(0),
+                process
+                    .and_then(|process| process.tasks())
+                    .map(|tasks| tasks.len()),
+            )
+        };
+        Self {
+            system,
+            pid,
+            cores: std::thread::available_parallelism()
+                .map(|count| count.get())
+                .unwrap_or(1),
+            cpu_percent: 0.0,
+            rss_bytes,
+            threads,
+            last_process_refresh: Instant::now(),
+        }
+    }
+
+    fn sample(&mut self) -> RuntimeSnapshot {
+        self.system.refresh_memory();
+        if self.last_process_refresh.elapsed() >= PROCESS_REFRESH_INTERVAL {
+            let pid = self.pid;
+            self.system.refresh_processes_specifics(
+                ProcessesToUpdate::Some(&[pid]),
+                true,
+                refresh_kind(),
+            );
+            if let Some(process) = self.system.process(pid) {
+                self.cpu_percent = process.cpu_usage() / self.cores as f32;
+                self.rss_bytes = process.memory();
+                self.threads = process.tasks().map(|tasks| tasks.len());
+            }
+            self.last_process_refresh = Instant::now();
+        }
+        RuntimeSnapshot {
+            rss_bytes: self.rss_bytes,
+            cpu_percent: self.cpu_percent,
+            threads: self.threads,
+            total_bytes: self.system.total_memory(),
+            available_bytes: self.system.available_memory(),
+        }
+    }
+}
+
+fn refresh_kind() -> ProcessRefreshKind {
+    ProcessRefreshKind::nothing().with_cpu().with_memory()
+}
+
+fn runtime_json(sample: &RuntimeSnapshot) -> String {
+    let threads = sample
+        .threads
+        .map_or_else(|| "null".to_string(), |count| count.to_string());
+    format!(
+        "\"process\":{{\"rssBytes\":{},\"cpuPercent\":{:.2},\"threads\":{},\"allocator\":\"system\"}},\"memory\":{{\"totalBytes\":{},\"availableBytes\":{}}}",
+        sample.rss_bytes,
+        sample.cpu_percent,
+        threads,
+        sample.total_bytes,
+        sample.available_bytes,
+    )
+}
 
 #[derive(Default)]
 pub struct HealthStats {
@@ -86,6 +182,15 @@ pub struct HealthConfig {
     pub version: String,
 }
 
+struct Shared {
+    stats: Arc<HealthStats>,
+    visitors: Arc<AtomicUsize>,
+    players: Players,
+    worlds: Worlds,
+    world_commands: WorldCommands,
+    runtime: Arc<Mutex<RuntimeSampler>>,
+}
+
 pub fn start(
     config: HealthConfig,
     stats: Arc<HealthStats>,
@@ -115,17 +220,15 @@ pub fn start(
         config.port,
         config.path
     );
-    std::thread::spawn(move || {
-        serve(
-            listener,
-            config,
-            stats,
-            visitors,
-            players,
-            worlds,
-            world_commands,
-        )
+    let shared = Arc::new(Shared {
+        stats,
+        visitors,
+        players,
+        worlds,
+        world_commands,
+        runtime: Arc::new(Mutex::new(RuntimeSampler::new())),
     });
+    std::thread::spawn(move || serve(listener, config, shared));
 }
 
 fn json_escape(value: &str) -> String {
@@ -308,15 +411,7 @@ fn json_bool(body: &str, key: &str) -> Option<bool> {
     Some(rest.starts_with("true"))
 }
 
-fn serve(
-    listener: std::net::TcpListener,
-    config: HealthConfig,
-    stats: Arc<HealthStats>,
-    visitors: Arc<AtomicUsize>,
-    players: Players,
-    worlds: Worlds,
-    world_commands: WorldCommands,
-) {
+fn serve(listener: std::net::TcpListener, config: HealthConfig, shared: Arc<Shared>) {
     use std::io::{Read, Write};
     const MAX_CONCURRENT_REQUESTS: usize = 32;
     let active = Arc::new(AtomicUsize::new(0));
@@ -333,16 +428,18 @@ fn serve(
         }
         let guard = ActiveGuard(Arc::clone(&active));
         let path = config.path.clone();
-        let stats = Arc::clone(&stats);
-        let visitors = Arc::clone(&visitors);
         let capacity = config.capacity;
         let enable_statistics = config.enable_statistics;
         let version = config.version.clone();
-        let players = Arc::clone(&players);
-        let worlds = Arc::clone(&worlds);
-        let world_commands = Arc::clone(&world_commands);
         let world_seq = Arc::clone(&world_seq);
+        let shared = Arc::clone(&shared);
         std::thread::spawn(move || {
+            let stats = &shared.stats;
+            let visitors = &shared.visitors;
+            let players = &shared.players;
+            let worlds = &shared.worlds;
+            let world_commands = &shared.world_commands;
+            let runtime = &shared.runtime;
             let _guard = guard;
             const MAX_BODY_BYTES: usize = 1 << 20;
             let mut buf = [0u8; 2048];
@@ -726,10 +823,14 @@ fn serve(
             }
             let now = Utc::now();
             let start = stats.start_time.unwrap_or(now);
-            let gc = "{\"gen0\":0,\"gen1\":0,\"gen2\":0,\"heapMb\":0.0,\"allocatedMb\":0.0,\"committedMb\":0.0,\"fragmentedMb\":0.0,\"pauseTimePercent\":0.000,\"serverGc\":false,\"latencyMode\":\"Interactive\"}";
+            let sample = {
+                let mut sampler = runtime.lock().unwrap_or_else(|e| e.into_inner());
+                sampler.sample()
+            };
+            let runtime_fields = runtime_json(&sample);
             let body = if enable_statistics {
                 format!(
-                    "{{\"listening\":true,\"ready\":true,\"visitors\":{},\"capacity\":{},\"sent\":{},\"recv\":{},\"packetsSent\":{},\"packetsRecv\":{},\"droppedUnreliable\":0,\"droppedVoice\":0,\"queuePerPeer\":0,\"voiceQueuePerPeer\":0,\"currentTime\":\"{}\",\"startTime\":\"{}\",\"version\":\"{}\",\"gc\":{}}}",
+                    "{{\"listening\":true,\"ready\":true,\"visitors\":{},\"capacity\":{},\"sent\":{},\"recv\":{},\"packetsSent\":{},\"packetsRecv\":{},\"currentTime\":\"{}\",\"startTime\":\"{}\",\"version\":\"{}\",{}}}",
                     visitors.load(Ordering::Relaxed),
                     capacity,
                     stats.tx_bytes.load(Ordering::Relaxed),
@@ -739,15 +840,15 @@ fn serve(
                     now.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
                     start.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
                     version,
-                    gc,
+                    runtime_fields,
                 )
             } else {
                 format!(
-                    "{{\"listening\":true,\"ready\":true,\"currentTime\":\"{}\",\"startTime\":\"{}\",\"version\":\"{}\",\"gc\":{}}}",
+                    "{{\"listening\":true,\"ready\":true,\"currentTime\":\"{}\",\"startTime\":\"{}\",\"version\":\"{}\",{}}}",
                     now.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
                     start.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
                     version,
-                    gc,
+                    runtime_fields,
                 )
             };
             let _ = write!(
@@ -777,5 +878,34 @@ mod tests {
         assert!(!json_body_is_valid(r#"{"url":"https://example.com/a""#));
         assert!(!json_body_is_valid(r#"{"url":"#));
         assert!(!json_body_is_valid("not json"));
+    }
+
+    #[test]
+    fn runtime_json_reports_measured_process_and_memory() {
+        let sample = RuntimeSnapshot {
+            rss_bytes: 12_345,
+            cpu_percent: 1.25,
+            threads: Some(4),
+            total_bytes: 1_000,
+            available_bytes: 250,
+        };
+        let json = runtime_json(&sample);
+        assert!(json.contains("\"rssBytes\":12345"));
+        assert!(json.contains("\"cpuPercent\":1.25"));
+        assert!(json.contains("\"threads\":4"));
+        assert!(json.contains("\"memory\":{\"totalBytes\":1000,\"availableBytes\":250}"));
+        assert!(!json.contains("gc"));
+    }
+
+    #[test]
+    fn runtime_json_marks_unsupported_thread_counts_null() {
+        let sample = RuntimeSnapshot {
+            rss_bytes: 1,
+            cpu_percent: 0.0,
+            threads: None,
+            total_bytes: 1,
+            available_bytes: 1,
+        };
+        assert!(runtime_json(&sample).contains("\"threads\":null"));
     }
 }

@@ -54,9 +54,12 @@ o logs will be saved` / `Logs are saved to <absolute path>`
     `LogConnectionHandshake`, password/DID rejection messages.
 - Server-info UDP query (unconnected) with the C# magic/nonce/online/max/name/MOTD response,
   per-IP 500 ms throttling, and the C# 100/s (burst 200) global token bucket.
-- JSON health endpoint with the C# field set, `Cache-Control` / `X-Content-Type-Options` headers,
-  GET-only 200/404/405 semantics, and the C# 32-concurrent-request 503 cap (`visitors`, `capacity`, byte/packet counters,
-  drop counters, queue bounds, timestamps, version, GC-shaped block).
+- JSON health endpoint with the C# header/status semantics (`Cache-Control`,
+  `X-Content-Type-Options`, GET-only 200/404/405, 32-concurrent-request 503 cap) and measured
+  Rust runtime fields: `process` (RSS, machine CPU %, thread count where the OS exposes it,
+  allocator) and `memory` (total/available), alongside `visitors`, `capacity`, byte/packet
+  counters, timestamps and the protocol version. C# `gc` and transport queue-bound fields are
+  not reproduced.
 
 ## Feature coverage
 
