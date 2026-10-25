@@ -2283,6 +2283,10 @@ impl Server {
 
     fn handle_load_resource(&mut self, from: SocketAddr, payload: &[u8]) -> Result<(), String> {
         let Ok((mode, object)) = parse_resource_id(payload) else {
+            warn!(
+                "[LoadResource] header parse failed from {from}: {} bytes",
+                payload.len()
+            );
             return Ok(());
         };
         let allowed = match mode {
@@ -2314,6 +2318,7 @@ impl Server {
             }
             return Ok(());
         }
+        info!("Adding Object {object}");
         let mut synchronized = None;
         let mut active = true;
         if let Ok(summary) = parse_resource_summary(payload) {
@@ -2334,18 +2339,23 @@ impl Server {
             if summary.strategy == 2 {
                 synchronized = Some((summary.id, summary.mode));
             }
+        } else {
+            warn!("[LoadResource] summary parse failed from {from}: mode={mode} id={object}");
         }
         if active {
             self.resources.insert(object, payload.to_vec());
         }
-        self.broadcast_reliable_except(from, LOAD_RESOURCE_CHANNEL, payload)?;
+        // C# `BasisNetworkResourceManagement.LoadResource` broadcasts to PeerSnapshot,
+        // which includes the creator. The requesting client only spawns from the echoed
+        // LoadResource message; excluding the sender leaves the creator with nothing.
+        self.broadcast_reliable_all(LOAD_RESOURCE_CHANNEL, payload);
         if let Some((net_id, mode)) = synchronized {
             self.start_preload(&net_id, mode);
         }
         Ok(())
     }
 
-    fn handle_unload_resource(&mut self, from: SocketAddr, payload: &[u8]) -> Result<(), String> {
+    fn handle_unload_resource(&mut self, _from: SocketAddr, payload: &[u8]) -> Result<(), String> {
         let Ok(object) = parse_unload_resource_id(payload) else {
             return Ok(());
         };
@@ -2354,7 +2364,10 @@ impl Server {
         if let Ok(mut worlds) = self.health_worlds.lock() {
             worlds.retain(|world| world.net_id != object);
         }
-        self.broadcast_reliable_except(from, UNLOAD_RESOURCE_CHANNEL, payload)
+        // C# broadcasts the unload to every peer, including the requesting client;
+        // that echo is what makes the creator's own copy disappear.
+        self.broadcast_reliable_all(UNLOAD_RESOURCE_CHANNEL, payload);
+        Ok(())
     }
 
     fn start_preload(&mut self, net_id: &str, mode: u8) {
@@ -5131,5 +5144,54 @@ mod tests {
         assert!(regular.has("basis.resource.load.prop"));
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_and_unload_are_echoed_to_the_requesting_peer() {
+        // C# broadcasts resource messages to PeerSnapshot, which includes the creator.
+        // BasisNetworkSpawnItem only sends the request; the client spawns from the echo.
+        let config = ServerConfig {
+            port: 0,
+            health_port: 0,
+            control_socket: false,
+            has_file_support: false,
+            ..ServerConfig::default()
+        };
+        let mut server = Server::bind(config).unwrap();
+        let client = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+        client
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .unwrap();
+        let addr = client.local_addr().unwrap();
+
+        let mut peer = Peer::new(addr, 1, 0, 0, -1);
+        peer.authenticated = true;
+        peer.did = "did:key:admin".into();
+        server.peers.insert(addr, peer);
+        server
+            .permissions
+            .add_user_to_group("did:key:admin", "admin");
+
+        let load = build_load_resource(&WorldResource {
+            net_id: "echo-test".into(),
+            url: "https://example.invalid/world.bee".into(),
+            password: "pw".into(),
+            persistent: false,
+            strategy: 0,
+        });
+        server.handle_load_resource(addr, &load).unwrap();
+
+        let mut buf = [0u8; 512];
+        let (len, _) = client.recv_from(&mut buf).unwrap();
+        assert!(len > CHANNELED_HEADER, "expected an echoed load packet");
+        assert_eq!(buf[3], LOAD_RESOURCE_CHANNEL * 4 + 2);
+        assert_eq!(buf[4], 1, "mode-1 world payload");
+
+        let unload = build_unload_resource("echo-test");
+        server.handle_unload_resource(addr, &unload).unwrap();
+        let (len, _) = client.recv_from(&mut buf).unwrap();
+        assert!(len > CHANNELED_HEADER, "expected an echoed unload packet");
+        assert_eq!(buf[3], UNLOAD_RESOURCE_CHANNEL * 4 + 2);
+        assert_eq!(buf[4], 1, "mode-1 world unload");
     }
 }
