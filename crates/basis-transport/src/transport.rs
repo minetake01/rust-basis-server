@@ -4182,36 +4182,73 @@ impl Server {
             self.broadcast_reliable_all(ADMIN_CHANNEL, &[43, u8::from(enabled)]);
             return Ok(());
         }
-        if self.permissions.effective(&did).has("basis.moderation.globallock") {
+        if self
+            .permissions
+            .effective(&did)
+            .has("basis.moderation.globallock")
+        {
             match mode {
                 104 => {
-                    let Ok(value) = reader.get_u8() else { return Ok(()); };
+                    let Ok(value) = reader.get_u8() else {
+                        return Ok(());
+                    };
                     self.locks.image_max_resolution_k = value.clamp(1, 16);
                     self.config.image_max_resolution_k = self.locks.image_max_resolution_k;
                     let value_text = self.locks.image_max_resolution_k.to_string();
-                    let _ = basis_config::update_values(std::path::Path::new(&self.config.config_path), &[("ImageMaxResolutionK", value_text.as_str())]);
+                    let _ = basis_config::update_values(
+                        std::path::Path::new(&self.config.config_path),
+                        &[("ImageMaxResolutionK", value_text.as_str())],
+                    );
                     self.broadcast_reliable_all(ADMIN_CHANNEL, &self.locks.payload());
-                    self.send_back(from, &format!("Maximum shared image resolution set to {}K.", self.locks.image_max_resolution_k))?;
+                    self.send_back(
+                        from,
+                        &format!(
+                            "Maximum shared image resolution set to {}K.",
+                            self.locks.image_max_resolution_k
+                        ),
+                    )?;
                     return Ok(());
                 }
                 105 => {
-                    let Ok(value) = reader.get_u16() else { return Ok(()); };
+                    let Ok(value) = reader.get_u16() else {
+                        return Ok(());
+                    };
                     self.locks.video_clip_max_megabytes = value.clamp(16, 1024);
                     self.config.video_clip_max_megabytes = self.locks.video_clip_max_megabytes;
                     let value_text = self.locks.video_clip_max_megabytes.to_string();
-                    let _ = basis_config::update_values(std::path::Path::new(&self.config.config_path), &[("VideoClipMaxMegabytes", value_text.as_str())]);
+                    let _ = basis_config::update_values(
+                        std::path::Path::new(&self.config.config_path),
+                        &[("VideoClipMaxMegabytes", value_text.as_str())],
+                    );
                     self.broadcast_reliable_all(ADMIN_CHANNEL, &self.locks.payload());
-                    self.send_back(from, &format!("Maximum shared video/audio clip size set to {} MB.", self.locks.video_clip_max_megabytes))?;
+                    self.send_back(
+                        from,
+                        &format!(
+                            "Maximum shared video/audio clip size set to {} MB.",
+                            self.locks.video_clip_max_megabytes
+                        ),
+                    )?;
                     return Ok(());
                 }
                 106 => {
-                    let Ok(value) = reader.get_u8() else { return Ok(()); };
+                    let Ok(value) = reader.get_u8() else {
+                        return Ok(());
+                    };
                     self.locks.video_clip_max_per_player = value.clamp(1, 16);
                     self.config.video_clip_max_per_player = self.locks.video_clip_max_per_player;
                     let value_text = self.locks.video_clip_max_per_player.to_string();
-                    let _ = basis_config::update_values(std::path::Path::new(&self.config.config_path), &[("VideoClipMaxPerPlayer", value_text.as_str())]);
+                    let _ = basis_config::update_values(
+                        std::path::Path::new(&self.config.config_path),
+                        &[("VideoClipMaxPerPlayer", value_text.as_str())],
+                    );
                     self.broadcast_reliable_all(ADMIN_CHANNEL, &self.locks.payload());
-                    self.send_back(from, &format!("Maximum shared clips per player set to {}.", self.locks.video_clip_max_per_player))?;
+                    self.send_back(
+                        from,
+                        &format!(
+                            "Maximum shared clips per player set to {}.",
+                            self.locks.video_clip_max_per_player
+                        ),
+                    )?;
                     return Ok(());
                 }
                 _ => {}
