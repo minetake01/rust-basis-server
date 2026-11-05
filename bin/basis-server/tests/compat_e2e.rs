@@ -3,7 +3,7 @@
 //! The unit tests cover codec and message layout in-process. These tests instead start the
 //! real `basis-server-rs` executable and talk to it the way an existing deployment does:
 //!
-//! - first boot creates the C# `config.xml` schema (v15) and seeds `permissions.xml`,
+//! - first boot creates the C# `config.xml` schema (v19) and seeds `permissions.xml`,
 //! - an older `config.xml` is upgraded the way the C# server upgrades it,
 //! - the log lines and `Logs/yyyy-MM-dd.log` file keep the C# shape,
 //! - the health / REST endpoints keep the C# status codes, headers and payload fields,
@@ -683,7 +683,7 @@ fn health_endpoint_matches_the_csharp_contract() {
         "\"ready\":true",
         "\"visitors\":0",
         "\"capacity\":65535",
-        "\"version\":\"56\"",
+        "\"version\":\"57\"",
         "\"currentTime\":\"",
         "\"startTime\":\"",
         "\"process\":{",
@@ -844,7 +844,7 @@ fn custom_health_path_matches_the_csharp_config_field() {
 
     let status = server.http("GET", "/status", None);
     assert_eq!(status.status, 200);
-    status.assert_contains("\"version\":\"56\"");
+    status.assert_contains("\"version\":\"57\"");
 
     let old_path = server.http("GET", "/health", None);
     assert_eq!(old_path.status, 404);
