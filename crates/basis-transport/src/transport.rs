@@ -4263,11 +4263,17 @@ impl Server {
             if mode == 102 {
                 self.config.avatar_hosting_locked = self.locks.avatar_hosting;
                 let value = self.config.avatar_hosting_locked.to_string();
-                let _ = basis_config::update_values(std::path::Path::new(&self.config.config_path), &[("AvatarHostingLocked", value.as_str())]);
+                let _ = basis_config::update_values(
+                    std::path::Path::new(&self.config.config_path),
+                    &[("AvatarHostingLocked", value.as_str())],
+                );
             } else if mode == 103 {
                 self.config.video_clips_locked = self.locks.video_clips;
                 let value = self.config.video_clips_locked.to_string();
-                let _ = basis_config::update_values(std::path::Path::new(&self.config.config_path), &[("VideoClipsLocked", value.as_str())]);
+                let _ = basis_config::update_values(
+                    std::path::Path::new(&self.config.config_path),
+                    &[("VideoClipsLocked", value.as_str())],
+                );
             }
             let state = self.locks.payload();
             self.broadcast_reliable_all(ADMIN_CHANNEL, &state);
