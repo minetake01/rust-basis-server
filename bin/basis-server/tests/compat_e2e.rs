@@ -428,7 +428,7 @@ fn first_boot_matches_the_csharp_config_schema() {
         "config.xml must keep the C# XML declaration"
     );
     for expected in [
-        "<ConfigVersion>15</ConfigVersion>",
+        "<ConfigVersion>19</ConfigVersion>",
         "<PeerLimit>65535</PeerLimit>",
         "<SetPort>4296</SetPort>",
         "<ServerName>Basis Server</ServerName>",
@@ -443,6 +443,11 @@ fn first_boot_matches_the_csharp_config_schema() {
         "<HighQualityDistance>10</HighQualityDistance>",
         "<MediumQualityDistance>20</MediumQualityDistance>",
         "<LowQualityDistance>40</LowQualityDistance>",
+        "<AvatarHostingLocked>false</AvatarHostingLocked>",
+        "<VideoClipsLocked>false</VideoClipsLocked>",
+        "<ImageMaxResolutionK>4</ImageMaxResolutionK>",
+        "<VideoClipMaxMegabytes>96</VideoClipMaxMegabytes>",
+        "<VideoClipMaxPerPlayer>3</VideoClipMaxPerPlayer>",
     ] {
         assert!(
             config.contains(expected),
@@ -529,7 +534,7 @@ fn older_config_is_upgraded_the_way_the_csharp_server_upgrades_it() {
 
     let config = server.config();
     assert!(
-        config.contains("<ConfigVersion>15</ConfigVersion>"),
+        config.contains("<ConfigVersion>19</ConfigVersion>"),
         "schema version was not bumped:\n{config}"
     );
     assert!(
