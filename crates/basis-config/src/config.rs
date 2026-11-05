@@ -350,11 +350,31 @@ pub fn apply_env(config: &mut ServerConfig) {
     if let Ok(v) = std::env::var("HealthPath") {
         config.health_path = normalize_path(&v);
     }
-    if let Ok(v) = std::env::var("AvatarHostingLocked") { if let Ok(v) = v.parse() { config.avatar_hosting_locked = v; } }
-    if let Ok(v) = std::env::var("VideoClipsLocked") { if let Ok(v) = v.parse() { config.video_clips_locked = v; } }
-    if let Ok(v) = std::env::var("ImageMaxResolutionK") { if let Ok(v) = v.parse() { config.image_max_resolution_k = v; } }
-    if let Ok(v) = std::env::var("VideoClipMaxMegabytes") { if let Ok(v) = v.parse() { config.video_clip_max_megabytes = v; } }
-    if let Ok(v) = std::env::var("VideoClipMaxPerPlayer") { if let Ok(v) = v.parse() { config.video_clip_max_per_player = v; } }
+    if let Ok(v) = std::env::var("AvatarHostingLocked") {
+        if let Ok(v) = v.parse() {
+            config.avatar_hosting_locked = v;
+        }
+    }
+    if let Ok(v) = std::env::var("VideoClipsLocked") {
+        if let Ok(v) = v.parse() {
+            config.video_clips_locked = v;
+        }
+    }
+    if let Ok(v) = std::env::var("ImageMaxResolutionK") {
+        if let Ok(v) = v.parse() {
+            config.image_max_resolution_k = v;
+        }
+    }
+    if let Ok(v) = std::env::var("VideoClipMaxMegabytes") {
+        if let Ok(v) = v.parse() {
+            config.video_clip_max_megabytes = v;
+        }
+    }
+    if let Ok(v) = std::env::var("VideoClipMaxPerPlayer") {
+        if let Ok(v) = v.parse() {
+            config.video_clip_max_per_player = v;
+        }
+    }
 }
 
 fn parse<T: std::str::FromStr>(text: &str, field: &str) -> anyhow::Result<T> {
