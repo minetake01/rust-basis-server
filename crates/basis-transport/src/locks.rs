@@ -121,7 +121,14 @@ mod tests {
 
     #[test]
     fn protocol_57_limits_are_appended_in_csharp_order() {
-        let locks = GlobalLocks { avatar_hosting: true, video_clips: true, image_max_resolution_k: 8, video_clip_max_megabytes: 512, video_clip_max_per_player: 7, ..Default::default() };
+        let locks = GlobalLocks {
+            avatar_hosting: true,
+            video_clips: true,
+            image_max_resolution_k: 8,
+            video_clip_max_megabytes: 512,
+            video_clip_max_per_player: 7,
+            ..Default::default()
+        };
         let payload = locks.payload();
         assert_eq!(&payload[23..], &[1, 1, 8, 0, 2, 7]);
     }
