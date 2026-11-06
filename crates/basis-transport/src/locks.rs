@@ -102,10 +102,6 @@ impl GlobalLocks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use basis_protocol::{
-        ADMIN_SET_IMAGE_MAX_RESOLUTION_MODE, ADMIN_SET_VIDEO_CLIP_MAX_PER_PLAYER_MODE,
-        ADMIN_SET_VIDEO_CLIP_MAX_SIZE_MODE,
-    };
 
     #[test]
     fn lock_state_payload_has_csharp_order_and_length() {
