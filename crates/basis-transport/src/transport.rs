@@ -8,11 +8,6 @@ use basis_config::ServerConfig;
 use basis_health::{HealthConfig, HealthStats};
 use basis_logging::{debug, error, info, warn};
 use basis_protocol::*;
-use basis_protocol::{
-    ADMIN_SET_IMAGE_MAX_RESOLUTION_MODE, ADMIN_SET_VIDEO_CLIP_MAX_PER_PLAYER_MODE,
-    ADMIN_SET_VIDEO_CLIP_MAX_SIZE_MODE, ADMIN_TOGGLE_AVATAR_HOSTING_MODE,
-    ADMIN_TOGGLE_VIDEO_CLIPS_MODE,
-};
 use basis_wire::fast;
 use basis_wire::{Reader, Writer};
 use ed25519_dalek::{Signature, Verifier};
@@ -4193,7 +4188,7 @@ impl Server {
             .has("basis.moderation.globallock")
         {
             match mode {
-                ADMIN_SET_IMAGE_MAX_RESOLUTION_MODE => {
+                103 => {
                     let Ok(value) = reader.get_u8() else {
                         return Ok(());
                     };
@@ -4214,7 +4209,7 @@ impl Server {
                     )?;
                     return Ok(());
                 }
-                ADMIN_SET_VIDEO_CLIP_MAX_SIZE_MODE => {
+                104 => {
                     let Ok(value) = reader.get_u16() else {
                         return Ok(());
                     };
@@ -4235,7 +4230,7 @@ impl Server {
                     )?;
                     return Ok(());
                 }
-                ADMIN_SET_VIDEO_CLIP_MAX_PER_PLAYER_MODE => {
+                105 => {
                     let Ok(value) = reader.get_u8() else {
                         return Ok(());
                     };
@@ -4265,14 +4260,14 @@ impl Server {
             .has("basis.moderation.globallock")
             && self.locks.toggle(mode).is_some()
         {
-            if mode == ADMIN_TOGGLE_AVATAR_HOSTING_MODE {
+            if mode == 101 {
                 self.config.avatar_hosting_locked = self.locks.avatar_hosting;
                 let value = self.config.avatar_hosting_locked.to_string();
                 let _ = basis_config::update_values(
                     std::path::Path::new(&self.config.config_path),
                     &[("AvatarHostingLocked", value.as_str())],
                 );
-            } else if mode == ADMIN_TOGGLE_VIDEO_CLIPS_MODE {
+            } else if mode == 102 {
                 self.config.video_clips_locked = self.locks.video_clips;
                 let value = self.config.video_clips_locked.to_string();
                 let _ = basis_config::update_values(
