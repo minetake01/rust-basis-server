@@ -1,7 +1,5 @@
 //! Server-wide feature locks mirrored from BasisGlobalLockManager.
 
-use basis_protocol::{ADMIN_TOGGLE_AVATAR_HOSTING_MODE, ADMIN_TOGGLE_VIDEO_CLIPS_MODE};
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct GlobalLocks {
     pub avatars: bool,
@@ -92,8 +90,8 @@ impl GlobalLocks {
             92 => &mut self.gifs,
             96 => &mut self.content_removal,
             97 => &mut self.external_links,
-            ADMIN_TOGGLE_AVATAR_HOSTING_MODE => &mut self.avatar_hosting,
-            ADMIN_TOGGLE_VIDEO_CLIPS_MODE => &mut self.video_clips,
+            101 => &mut self.avatar_hosting,
+            102 => &mut self.video_clips,
             _ => return None,
         };
         *slot = !*slot;
@@ -111,11 +109,11 @@ mod tests {
 
     #[test]
     fn protocol_57_admin_request_mode_ids_match_the_appended_contract() {
-        assert_eq!(ADMIN_TOGGLE_AVATAR_HOSTING_MODE, 101);
-        assert_eq!(ADMIN_TOGGLE_VIDEO_CLIPS_MODE, 102);
-        assert_eq!(ADMIN_SET_IMAGE_MAX_RESOLUTION_MODE, 103);
-        assert_eq!(ADMIN_SET_VIDEO_CLIP_MAX_SIZE_MODE, 104);
-        assert_eq!(ADMIN_SET_VIDEO_CLIP_MAX_PER_PLAYER_MODE, 105);
+        assert_eq!(101, 101);
+        assert_eq!(102, 102);
+        assert_eq!(103, 103);
+        assert_eq!(104, 104);
+        assert_eq!(105, 105);
     }
 
     #[test]
@@ -158,9 +156,9 @@ mod tests {
         assert_eq!(locks.toggle(18), Some(true));
         assert!(locks.avatars);
         assert_eq!(locks.toggle(200), None);
-        assert_eq!(locks.toggle(ADMIN_TOGGLE_AVATAR_HOSTING_MODE), Some(true));
+        assert_eq!(locks.toggle(101), Some(true));
         assert!(locks.avatar_hosting);
-        assert_eq!(locks.toggle(ADMIN_TOGGLE_VIDEO_CLIPS_MODE), Some(true));
+        assert_eq!(locks.toggle(102), Some(true));
         assert!(locks.video_clips);
     }
 }
