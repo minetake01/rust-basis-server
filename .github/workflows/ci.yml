@@ -79,7 +79,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       # Starts the real basis-server-rs and checks the C# compatibility contract end to end:
-      # config.xml schema v15 / upgrade, permissions seeding, log shape, health and REST statuses,
+      # config.xml schema v19 / upgrade, permissions seeding, log shape, health and REST statuses,
       # the unconnected server-info UDP query, and the structured reject payloads.
       # The full C# harness lives in the Unity workspace (it references BasisNetworkClient and
       # BasisNetworkServer), so it cannot be built here; scripts/run-compat.ps1 remains the

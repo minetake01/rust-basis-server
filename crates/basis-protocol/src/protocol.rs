@@ -1,7 +1,7 @@
 use basis_wire::wire::{Reader, WireError, WireResult, Writer};
 use ed25519_dalek::VerifyingKey;
 
-pub const PROTOCOL_VERSION: u16 = 56;
+pub const PROTOCOL_VERSION: u16 = 57;
 pub const LEGACY_PROTOCOL_VERSION: u16 = 55;
 pub const SERVER_INFO_QUERY_MAGIC: u32 = 0xBA51_5101;
 pub const SERVER_INFO_RESPONSE_MAGIC: u32 = 0xBA51_5102;
@@ -42,6 +42,7 @@ pub const ADMIN_CHANNEL: u8 = 34;
 pub const SERVER_LIBRARY_CHANNEL: u8 = 53;
 pub const ADMIN_MESSAGE_PLAYER: u8 = 3;
 pub const ADMIN_MESSAGE_ALL: u8 = 4;
+
 pub const LOAD_RESOURCE_CHANNEL: u8 = 25;
 pub const UNLOAD_RESOURCE_CHANNEL: u8 = 26;
 pub const PRELOAD_READY_CHANNEL: u8 = 27;

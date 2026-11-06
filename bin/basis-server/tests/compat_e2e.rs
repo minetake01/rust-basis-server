@@ -3,7 +3,7 @@
 //! The unit tests cover codec and message layout in-process. These tests instead start the
 //! real `basis-server-rs` executable and talk to it the way an existing deployment does:
 //!
-//! - first boot creates the C# `config.xml` schema (v15) and seeds `permissions.xml`,
+//! - first boot creates the C# `config.xml` schema (v19) and seeds `permissions.xml`,
 //! - an older `config.xml` is upgraded the way the C# server upgrades it,
 //! - the log lines and `Logs/yyyy-MM-dd.log` file keep the C# shape,
 //! - the health / REST endpoints keep the C# status codes, headers and payload fields,
@@ -428,7 +428,7 @@ fn first_boot_matches_the_csharp_config_schema() {
         "config.xml must keep the C# XML declaration"
     );
     for expected in [
-        "<ConfigVersion>15</ConfigVersion>",
+        "<ConfigVersion>19</ConfigVersion>",
         "<PeerLimit>65535</PeerLimit>",
         "<SetPort>4296</SetPort>",
         "<ServerName>Basis Server</ServerName>",
@@ -443,6 +443,11 @@ fn first_boot_matches_the_csharp_config_schema() {
         "<HighQualityDistance>10</HighQualityDistance>",
         "<MediumQualityDistance>20</MediumQualityDistance>",
         "<LowQualityDistance>40</LowQualityDistance>",
+        "<AvatarHostingLocked>false</AvatarHostingLocked>",
+        "<VideoClipsLocked>false</VideoClipsLocked>",
+        "<ImageMaxResolutionK>4</ImageMaxResolutionK>",
+        "<VideoClipMaxMegabytes>96</VideoClipMaxMegabytes>",
+        "<VideoClipMaxPerPlayer>3</VideoClipMaxPerPlayer>",
     ] {
         assert!(
             config.contains(expected),
@@ -529,7 +534,7 @@ fn older_config_is_upgraded_the_way_the_csharp_server_upgrades_it() {
 
     let config = server.config();
     assert!(
-        config.contains("<ConfigVersion>15</ConfigVersion>"),
+        config.contains("<ConfigVersion>19</ConfigVersion>"),
         "schema version was not bumped:\n{config}"
     );
     assert!(
@@ -683,7 +688,7 @@ fn health_endpoint_matches_the_csharp_contract() {
         "\"ready\":true",
         "\"visitors\":0",
         "\"capacity\":65535",
-        "\"version\":\"56\"",
+        "\"version\":\"57\"",
         "\"currentTime\":\"",
         "\"startTime\":\"",
         "\"process\":{",
@@ -844,7 +849,7 @@ fn custom_health_path_matches_the_csharp_config_field() {
 
     let status = server.http("GET", "/status", None);
     assert_eq!(status.status, 200);
-    status.assert_contains("\"version\":\"56\"");
+    status.assert_contains("\"version\":\"57\"");
 
     let old_path = server.http("GET", "/health", None);
     assert_eq!(old_path.status, 404);

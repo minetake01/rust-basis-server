@@ -8,7 +8,7 @@ module. The compatibility harness drives it with the existing C# client stack.
 - LiteNetLib connection request/accept, connection-number validation, reliable-ordered,
   sequenced, unreliable, merged and compact-merged packets, cumulative acknowledgements,
   ping/pong, and outbound fragmentation.
-- Protocol version 56, including the X25519 connection key, `BasisDidLoginTranscript` signature,
+- Protocol version 57, including the X25519 connection key, `BasisDidLoginTranscript` signature,
   ChaCha20-Poly1305 client-to-server sealing, company/product validation, password validation,
   DID challenge/response authentication (did:key Ed25519), and the server metadata message.
 - Remote-player spawn batches, chat relay, voice relay, avatar keyframe relay, delta-avatar
@@ -19,7 +19,7 @@ module. The compatibility harness drives it with the existing C# client stack.
 - Large join fills use the C# raw-Deflate `ServerReadyBatchMessage` framing when it saves space.
 - Late joiners receive the most recent stored keyframe rather than the original connect-time
   pose.
-- C# default `config.xml` creation on first boot (`<exe>/config/config.xml`, schema v15),
+- C# default `config.xml` creation on first boot (`<exe>/config/config.xml`, schema v19),
   schema upgrade of older files with the C# "adding missing settings" log, and the headless
   "NO ADMIN CONFIGURED" warning block.
 - C# `config.xml` fields for port, peer limit, password/auth flags, company/product, server UUID,
@@ -60,6 +60,11 @@ o logs will be saved` / `Logs are saved to <absolute path>`
   allocator) and `memory` (total/available), alongside `visitors`, `capacity`, byte/packet
   counters, timestamps and the protocol version. C# `gc` and transport queue-bound fields are
   not reproduced.
+
+
+### Protocol 57 compatibility boundary
+
+The protocol-57 `GlobalGetLockState` extension is implemented, including avatar-hosting/video-clip lock state and the shared image/video limits. The `basis.avatarhost` and `basis.screenshare` plugin relays are not implemented yet; clients can connect, but those two features are not available through this Rust server. Full feature parity with the current C# server is therefore not claimed.
 
 ## Feature coverage
 
@@ -130,7 +135,7 @@ rust-basis-server/
   Cargo.toml                 workspace
   crates/
     basis-wire/              NetDataReader/NetDataWriter primitives, localized unsafe fast path
-basis-crypto/            protocol-56 X25519, HKDF, login transcript and packet AEAD
+basis-crypto/            protocol-57 X25519, HKDF, login transcript and packet AEAD
     basis-protocol/          channels, ReadyMessage, metadata, chat, voice, avatar framing
     basis-avatar/            High-to-Medium/Low/VeryLow repacker and position decode
     basis-config/            C#-compatible config.xml + environment loading
@@ -176,7 +181,7 @@ The defaults mirror the C# server where this implementation consumes the field: 
 and DID auth enabled, peer limit 65535, file logging enabled, health on `localhost:10666`, and
 quality distances 10/20/40 m.
 
-## Headless protocol-56 smoke test
+## Legacy protocol-56 headless smoke test (not compatible with protocol 57)
 
 Two protocol-56 `BasisNetworkClientConsole` instances connect without a GUI. The server relays
 avatar frames and voice; the console reports:
@@ -210,17 +215,17 @@ The surviving 56 client logs the departure too:
 
 The Unity project can also be driven through Unity MCP's `Unity_RunCommand`. The official boot scene (`Packages/com.basis.framework/Scenes/initialization.unity`) connects as `EditorSmoke`, loads the server-provided `test` world, receives the remote peer (`BasisNetworkPlayers.Players = 2`, `RemotePlayers = 1`, `PlayerReady = True`), and tracks its movement (remote position `(0.81, 5.49, -17.11)` against the server's `(-0.101, 5.0800004, -18.227001)`). Editor-originated chat reaches the 56 console as `[CHAT] sender=0 text=editor-chat`. Stopping that peer produced `Peer removed: 1` / `Player 1 removed and cleaned up.` on the server and dropped Unity's `RemotePlayers` to zero. Console-originated chat was received by the Unity project as `[CHAT-IN] 2:headless-chat-0-21035` (and `[CHAT-RX] arrived bytes=25 disabled=False`). Voice receive was confirmed by forcing the voice harness to address the editor's player id: `BasisNetworkHandleVoice.Message.Count = 1` with `RemotePlayers = 1`. No window activation or mouse input is used.
 
-`scripts/run-headless-56.ps1` runs the protocol-56 console headlessly and asserts chat, scene,
+`scripts/run-headless-56.ps1` is a historical protocol-56 suite and cannot connect to a protocol-57 server; it asserts chat, scene,
 ownership, and resource traffic; it is the native-56 smoke suite.
 
-`/api/players` returns the C#-shaped `{"players":[...]}` array from live peers, with the platform parsed from each client's metadata and the position updated from live avatar frames, and `/api/worlds` supports GET list, POST load (`{"url":"...","password":"...","persistent":false,"strategy":"immediate"}`), and DELETE unload/clear; loaded worlds are broadcast to connected clients as mode-1 resources. `defaultlibrary/*.xml` entries are sent to every client on `ServerLibraryChannel` as the C# server does. `--initial-world=<url>#<password>` seeds a mode-1 world at boot; every joining client receives it through the normal LoadResource replay. `/api/worlds/switch` loads a new world, announces it, and unloads the previous world (optionally after `delay` seconds). Synchronized loads track `PreloadReadyChannel` and broadcast `SpawnPreloadedChannel` when every peer is ready (or after the 5-minute timeout). Predownload loads only broadcast the cache request; they are not registered as active worlds and never spawn. `/api/announce` broadcasts an admin message to all clients; `/api/announce/{uuid}` targets one player. `scripts/run-compat.ps1` passes against protocol 56 health output and covers server-info,
+`/api/players` returns the C#-shaped `{"players":[...]}` array from live peers, with the platform parsed from each client's metadata and the position updated from live avatar frames, and `/api/worlds` supports GET list, POST load (`{"url":"...","password":"...","persistent":false,"strategy":"immediate"}`), and DELETE unload/clear; loaded worlds are broadcast to connected clients as mode-1 resources. `defaultlibrary/*.xml` entries are sent to every client on `ServerLibraryChannel` as the C# server does. `--initial-world=<url>#<password>` seeds a mode-1 world at boot; every joining client receives it through the normal LoadResource replay. `/api/worlds/switch` loads a new world, announces it, and unloads the previous world (optionally after `delay` seconds). Synchronized loads track `PreloadReadyChannel` and broadcast `SpawnPreloadedChannel` when every peer is ready (or after the 5-minute timeout). Predownload loads only broadcast the cache request; they are not registered as active worlds and never spawn. `/api/announce` broadcasts an admin message to all clients; `/api/announce/{uuid}` targets one player. `scripts/run-compat.ps1` passes against protocol 57 health output and covers server-info,
 wire/behavior compatibility, late join, departure, duplicate auth, bad password, and distance
 reduction. `scripts/check-log-compat.ps1` passes the C#-shaped startup/connect/disconnect/
 rejection/bind-failure log checks.
 
 ## Real client smoke test
 
-The installed `Basis Unity.exe` (protocol 56) connects from the main menu to the local server
+The recorded installed `Basis Unity.exe` (protocol 56) smoke test is historical and has not been rerun against protocol 57
 (port 4296). The client reaches `Authentication confirmed`, `SetupLocalPlayer`, resolves
 `BasisCameraDollyManager` through the server NetID assignment, and renders its avatar. A second
 56 client is announced into the world. Connecting with `--connection=` skips the menu scene load,
@@ -269,7 +274,7 @@ cargo test --manifest-path rust-basis-server\Cargo.toml
 
 `.github/workflows/ci.yml` runs formatting, Clippy, unit/doc tests and the release build, and on
 Linux, Windows and macOS runs `bin/basis-server/tests/compat_e2e.rs`. That suite starts the real
-binary and checks the C# contract end to end: `config.xml` schema v15 and the older-schema upgrade,
+binary and checks the C# contract end to end: `config.xml` schema v19 and the older-schema upgrade,
 admin seeding, the log shape, health/REST statuses and fields, the server-info UDP query, and the
 structured reject packets. The full C# harness still needs the Unity workspace, so
 `scripts/run-compat.ps1` runs on a Windows machine rather than a hosted runner.

@@ -52,6 +52,11 @@ pub struct ServerConfig {
     pub image_share_enforcement_percent: i32,
     pub avatar_bundle_min_messages: i32,
     pub avatar_bundle_min_bytes: i32,
+    pub avatar_hosting_locked: bool,
+    pub video_clips_locked: bool,
+    pub image_max_resolution_k: u8,
+    pub video_clip_max_megabytes: u16,
+    pub video_clip_max_per_player: u8,
 }
 
 impl Default for ServerConfig {
@@ -107,6 +112,11 @@ impl Default for ServerConfig {
             image_share_enforcement_percent: 150,
             avatar_bundle_min_messages: 2,
             avatar_bundle_min_bytes: 128,
+            avatar_hosting_locked: false,
+            video_clips_locked: false,
+            image_max_resolution_k: 4,
+            video_clip_max_megabytes: 96,
+            video_clip_max_per_player: 3,
         }
     }
 }
@@ -202,6 +212,11 @@ pub fn apply_file(config: &mut ServerConfig, path: &Path) -> anyhow::Result<()> 
             }
             "AvatarBundleMinMessages" => config.avatar_bundle_min_messages = parse(text, name)?,
             "AvatarBundleMinBytes" => config.avatar_bundle_min_bytes = parse(text, name)?,
+            "AvatarHostingLocked" => config.avatar_hosting_locked = parse(text, name)?,
+            "VideoClipsLocked" => config.video_clips_locked = parse(text, name)?,
+            "ImageMaxResolutionK" => config.image_max_resolution_k = parse(text, name)?,
+            "VideoClipMaxMegabytes" => config.video_clip_max_megabytes = parse(text, name)?,
+            "VideoClipMaxPerPlayer" => config.video_clip_max_per_player = parse(text, name)?,
             "EnableAvatarBundleCompression" => {
                 config.enable_avatar_bundle_compression = parse(text, name)?
             }
@@ -335,6 +350,31 @@ pub fn apply_env(config: &mut ServerConfig) {
     if let Ok(v) = std::env::var("HealthPath") {
         config.health_path = normalize_path(&v);
     }
+    if let Ok(v) = std::env::var("AvatarHostingLocked") {
+        if let Ok(v) = v.parse() {
+            config.avatar_hosting_locked = v;
+        }
+    }
+    if let Ok(v) = std::env::var("VideoClipsLocked") {
+        if let Ok(v) = v.parse() {
+            config.video_clips_locked = v;
+        }
+    }
+    if let Ok(v) = std::env::var("ImageMaxResolutionK") {
+        if let Ok(v) = v.parse() {
+            config.image_max_resolution_k = v;
+        }
+    }
+    if let Ok(v) = std::env::var("VideoClipMaxMegabytes") {
+        if let Ok(v) = v.parse() {
+            config.video_clip_max_megabytes = v;
+        }
+    }
+    if let Ok(v) = std::env::var("VideoClipMaxPerPlayer") {
+        if let Ok(v) = v.parse() {
+            config.video_clip_max_per_player = v;
+        }
+    }
 }
 
 fn parse<T: std::str::FromStr>(text: &str, field: &str) -> anyhow::Result<T> {
@@ -376,6 +416,11 @@ const SCHEMA_TAGS: &[&str] = &[
     "HighQualityDistance",
     "MediumQualityDistance",
     "LowQualityDistance",
+    "AvatarHostingLocked",
+    "VideoClipsLocked",
+    "ImageMaxResolutionK",
+    "VideoClipMaxMegabytes",
+    "VideoClipMaxPerPlayer",
 ];
 
 fn extract_element(template: &str, tag: &str) -> Option<String> {
@@ -406,7 +451,7 @@ pub fn ensure_schema(path: &Path) -> std::io::Result<bool> {
             }
         }
     }
-    let version_current = text.contains("<ConfigVersion>15</ConfigVersion>");
+    let version_current = text.contains("<ConfigVersion>19</ConfigVersion>");
     if missing.is_empty() && version_current {
         return Ok(false);
     }
@@ -527,6 +572,11 @@ mod tests {
               <HighQualityDistance>7</HighQualityDistance>
               <MediumQualityDistance>17</MediumQualityDistance>
               <LowQualityDistance>37</LowQualityDistance>
+              <AvatarHostingLocked>true</AvatarHostingLocked>
+              <VideoClipsLocked>true</VideoClipsLocked>
+              <ImageMaxResolutionK>8</ImageMaxResolutionK>
+              <VideoClipMaxMegabytes>512</VideoClipMaxMegabytes>
+              <VideoClipMaxPerPlayer>7</VideoClipMaxPerPlayer>
             </Configuration>"#,
         )
         .unwrap();
@@ -551,6 +601,11 @@ mod tests {
         assert_eq!(c.high_quality_distance, 7.0);
         assert_eq!(c.medium_quality_distance, 17.0);
         assert_eq!(c.low_quality_distance, 37.0);
+        assert!(c.avatar_hosting_locked);
+        assert!(c.video_clips_locked);
+        assert_eq!(c.image_max_resolution_k, 8);
+        assert_eq!(c.video_clip_max_megabytes, 512);
+        assert_eq!(c.video_clip_max_per_player, 7);
     }
 
     #[test]
@@ -576,14 +631,14 @@ mod tests {
         let template = include_str!("../default-config.xml");
         let broken = template
             .replace(
-                "<ConfigVersion>15</ConfigVersion>",
+                "<ConfigVersion>19</ConfigVersion>",
                 "<ConfigVersion>14</ConfigVersion>",
             )
             .replace("<ServerName>Basis Server</ServerName>\n", "");
         std::fs::write(&path, broken).unwrap();
         assert!(ensure_schema(&path).unwrap());
         let text = std::fs::read_to_string(&path).unwrap();
-        assert!(text.contains("<ConfigVersion>15</ConfigVersion>"));
+        assert!(text.contains("<ConfigVersion>19</ConfigVersion>"));
         assert!(text.contains("<ServerName>Basis Server</ServerName>"));
         assert!(!ensure_schema(&path).unwrap());
         let _ = std::fs::remove_file(path);
@@ -625,5 +680,8 @@ mod tests {
         assert_eq!(c.high_quality_distance, 10.0);
         assert_eq!(c.medium_quality_distance, 20.0);
         assert_eq!(c.low_quality_distance, 40.0);
+        assert_eq!(c.image_max_resolution_k, 4);
+        assert_eq!(c.video_clip_max_megabytes, 96);
+        assert_eq!(c.video_clip_max_per_player, 3);
     }
 }

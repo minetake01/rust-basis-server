@@ -24,6 +24,11 @@ pub struct GlobalLocks {
     pub gifs: bool,
     pub content_removal: bool,
     pub external_links: bool,
+    pub avatar_hosting: bool,
+    pub video_clips: bool,
+    pub image_max_resolution_k: u8,
+    pub video_clip_max_megabytes: u16,
+    pub video_clip_max_per_player: u8,
 }
 
 impl GlobalLocks {
@@ -53,6 +58,12 @@ impl GlobalLocks {
             u8::from(self.gifs),
             u8::from(self.content_removal),
             u8::from(self.external_links),
+            u8::from(self.avatar_hosting),
+            u8::from(self.video_clips),
+            self.image_max_resolution_k,
+            self.video_clip_max_megabytes as u8,
+            (self.video_clip_max_megabytes >> 8) as u8,
+            self.video_clip_max_per_player,
         ]
     }
 
@@ -79,6 +90,8 @@ impl GlobalLocks {
             92 => &mut self.gifs,
             96 => &mut self.content_removal,
             97 => &mut self.external_links,
+            101 => &mut self.avatar_hosting,
+            102 => &mut self.video_clips,
             _ => return None,
         };
         *slot = !*slot;
@@ -98,10 +111,26 @@ mod tests {
             ..Default::default()
         };
         let payload = locks.payload();
-        assert_eq!(payload.len(), 23);
+        assert_eq!(payload.len(), 29);
         assert_eq!(payload[0], 21);
         assert_eq!(payload[7], 3);
         assert_eq!(payload[14], 1);
+        assert_eq!(payload[23], 0);
+        assert_eq!(payload[24], 0);
+    }
+
+    #[test]
+    fn protocol_57_limits_are_appended_in_csharp_order() {
+        let locks = GlobalLocks {
+            avatar_hosting: true,
+            video_clips: true,
+            image_max_resolution_k: 8,
+            video_clip_max_megabytes: 512,
+            video_clip_max_per_player: 7,
+            ..Default::default()
+        };
+        let payload = locks.payload();
+        assert_eq!(&payload[23..], &[1, 1, 8, 0, 2, 7]);
     }
 
     #[test]
@@ -114,5 +143,9 @@ mod tests {
         assert_eq!(locks.toggle(18), Some(true));
         assert!(locks.avatars);
         assert_eq!(locks.toggle(200), None);
+        assert_eq!(locks.toggle(101), Some(true));
+        assert!(locks.avatar_hosting);
+        assert_eq!(locks.toggle(102), Some(true));
+        assert!(locks.video_clips);
     }
 }
