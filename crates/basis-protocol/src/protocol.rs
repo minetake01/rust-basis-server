@@ -43,12 +43,6 @@ pub const SERVER_LIBRARY_CHANNEL: u8 = 53;
 pub const ADMIN_MESSAGE_PLAYER: u8 = 3;
 pub const ADMIN_MESSAGE_ALL: u8 = 4;
 
-// Basis C# AdminRequestMode values appended in protocol 57.
-pub const ADMIN_TOGGLE_AVATAR_HOSTING_MODE: u8 = 101;
-pub const ADMIN_TOGGLE_VIDEO_CLIPS_MODE: u8 = 102;
-pub const ADMIN_SET_IMAGE_MAX_RESOLUTION_MODE: u8 = 103;
-pub const ADMIN_SET_VIDEO_CLIP_MAX_SIZE_MODE: u8 = 104;
-pub const ADMIN_SET_VIDEO_CLIP_MAX_PER_PLAYER_MODE: u8 = 105;
 pub const LOAD_RESOURCE_CHANNEL: u8 = 25;
 pub const UNLOAD_RESOURCE_CHANNEL: u8 = 26;
 pub const PRELOAD_READY_CHANNEL: u8 = 27;
