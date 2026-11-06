@@ -108,15 +108,6 @@ mod tests {
     };
 
     #[test]
-    fn protocol_57_admin_request_mode_ids_match_the_appended_contract() {
-        assert_eq!(101, 101);
-        assert_eq!(102, 102);
-        assert_eq!(103, 103);
-        assert_eq!(104, 104);
-        assert_eq!(105, 105);
-    }
-
-    #[test]
     fn lock_state_payload_has_csharp_order_and_length() {
         let locks = GlobalLocks {
             text_chat: true,
