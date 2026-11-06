@@ -2,7 +2,7 @@
 <Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <!-- Basis dedicated-server configuration. Any environment variable whose name matches a field below overrides it at launch (e.g. PeerLimit=256). These comments are emitted from code, so they survive restarts AND in-game admin-panel saves. -->
   <!-- Config schema version, managed automatically. When the server gains new settings this file is rewritten to add them (with their defaults) and this number is bumped — don't edit by hand. -->
-  <ConfigVersion>15</ConfigVersion>
+  <ConfigVersion>19</ConfigVersion>
   <!-- ===== Networking / listener ===== -->
   <!-- Maximum number of simultaneously connected peers (players). int. Default 65535. -->
   <PeerLimit>65535</PeerLimit>
@@ -199,6 +199,12 @@
   <SafeDisplayNamesForced>false</SafeDisplayNamesForced>
   <!-- Stop GIFs animating for players without basis.moderation.globallock: they see each GIF's first frame, the server drops GIF animation data they send, and it stops replaying cached GIF animations to them. Still images are unaffected, and animation resumes when the lock is lifted. true|false; default false. -->
   <GifsLocked>false</GifsLocked>
+  <!-- Basis protocol 57 global sharing policy. -->
+  <AvatarHostingLocked>false</AvatarHostingLocked>
+  <VideoClipsLocked>false</VideoClipsLocked>
+  <ImageMaxResolutionK>4</ImageMaxResolutionK>
+  <VideoClipMaxMegabytes>96</VideoClipMaxMegabytes>
+  <VideoClipMaxPerPlayer>3</VideoClipMaxPerPlayer>
   <ApiEnabled>false</ApiEnabled>
   <ApiHost>localhost</ApiHost>
   <ApiPort>10667</ApiPort>

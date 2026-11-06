@@ -1,7 +1,7 @@
 use basis_wire::wire::{Reader, WireError, WireResult, Writer};
 use ed25519_dalek::VerifyingKey;
 
-pub const PROTOCOL_VERSION: u16 = 56;
+pub const PROTOCOL_VERSION: u16 = 57;
 pub const LEGACY_PROTOCOL_VERSION: u16 = 55;
 pub const SERVER_INFO_QUERY_MAGIC: u32 = 0xBA51_5101;
 pub const SERVER_INFO_RESPONSE_MAGIC: u32 = 0xBA51_5102;
