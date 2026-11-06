@@ -90,8 +90,8 @@ impl GlobalLocks {
             92 => &mut self.gifs,
             96 => &mut self.content_removal,
             97 => &mut self.external_links,
-            102 => &mut self.avatar_hosting,
-            103 => &mut self.video_clips,
+            101 => &mut self.avatar_hosting,
+            102 => &mut self.video_clips,
             _ => return None,
         };
         *slot = !*slot;
@@ -143,9 +143,9 @@ mod tests {
         assert_eq!(locks.toggle(18), Some(true));
         assert!(locks.avatars);
         assert_eq!(locks.toggle(200), None);
-        assert_eq!(locks.toggle(102), Some(true));
+        assert_eq!(locks.toggle(101), Some(true));
         assert!(locks.avatar_hosting);
-        assert_eq!(locks.toggle(103), Some(true));
+        assert_eq!(locks.toggle(102), Some(true));
         assert!(locks.video_clips);
     }
 }

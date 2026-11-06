@@ -4188,7 +4188,7 @@ impl Server {
             .has("basis.moderation.globallock")
         {
             match mode {
-                104 => {
+                103 => {
                     let Ok(value) = reader.get_u8() else {
                         return Ok(());
                     };
@@ -4209,7 +4209,7 @@ impl Server {
                     )?;
                     return Ok(());
                 }
-                105 => {
+                104 => {
                     let Ok(value) = reader.get_u16() else {
                         return Ok(());
                     };
@@ -4230,7 +4230,7 @@ impl Server {
                     )?;
                     return Ok(());
                 }
-                106 => {
+                105 => {
                     let Ok(value) = reader.get_u8() else {
                         return Ok(());
                     };
@@ -4260,14 +4260,14 @@ impl Server {
             .has("basis.moderation.globallock")
             && self.locks.toggle(mode).is_some()
         {
-            if mode == 102 {
+            if mode == 101 {
                 self.config.avatar_hosting_locked = self.locks.avatar_hosting;
                 let value = self.config.avatar_hosting_locked.to_string();
                 let _ = basis_config::update_values(
                     std::path::Path::new(&self.config.config_path),
                     &[("AvatarHostingLocked", value.as_str())],
                 );
-            } else if mode == 103 {
+            } else if mode == 102 {
                 self.config.video_clips_locked = self.locks.video_clips;
                 let value = self.config.video_clips_locked.to_string();
                 let _ = basis_config::update_values(
