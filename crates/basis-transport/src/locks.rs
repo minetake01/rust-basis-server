@@ -104,6 +104,10 @@ impl GlobalLocks {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use basis_protocol::{
+        ADMIN_SET_IMAGE_MAX_RESOLUTION_MODE, ADMIN_SET_VIDEO_CLIP_MAX_PER_PLAYER_MODE,
+        ADMIN_SET_VIDEO_CLIP_MAX_SIZE_MODE,
+    };
 
     #[test]
     fn protocol_57_admin_request_mode_ids_match_the_appended_contract() {
